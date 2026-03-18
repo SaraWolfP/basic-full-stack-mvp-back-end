@@ -31,7 +31,7 @@ def cria_tabela(conn: sqlite3.Connection, nome_tabela: str, colunas: list[str]) 
     conn.commit()
 
 
-def insere_dado(conn: sqlite3.Connection, nome_tabela: str, dados: dict) -> None:
+def insere_dado(conn: sqlite3.Connection, nome_tabela: str, dados: dict) -> int:
     """
     Insere um registro em uma tabela do banco de dados.
 
@@ -39,6 +39,9 @@ def insere_dado(conn: sqlite3.Connection, nome_tabela: str, dados: dict) -> None
         conn: conexão ativa com o banco de dados.
         nome_tabela: nome da tabela de destino.
         dados: dicionário com os valores a inserir (chave = nome da coluna).
+
+    Retorna:
+        id gerado automaticamente pelo banco para o registro inserido (lastrowid).
     """
     cursor = conn.cursor()
     colunas = ', '.join(dados.keys())
@@ -48,6 +51,7 @@ def insere_dado(conn: sqlite3.Connection, nome_tabela: str, dados: dict) -> None
         list(dados.values())
     )
     conn.commit()
+    return cursor.lastrowid
 
 
 def obtem_dados(conn: sqlite3.Connection, nome_tabela: str, colunas: list[str]) -> list:
@@ -65,6 +69,41 @@ def obtem_dados(conn: sqlite3.Connection, nome_tabela: str, colunas: list[str]) 
     cursor = conn.cursor()
     cursor.execute(f"SELECT {', '.join(colunas)} FROM {nome_tabela}")
     return cursor.fetchall()
+
+
+def obtem_dado(conn: sqlite3.Connection, nome_tabela: str, id: int) -> sqlite3.Row | None:
+    """
+    Obtém um único registro de uma tabela pelo id.
+
+    Argumentos:
+        conn: conexão ativa com o banco de dados.
+        nome_tabela: nome da tabela de origem.
+        id: id do registro a ser obtido.
+
+    Retorna:
+        Registro encontrado ou None se não existir.
+    """
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM {nome_tabela} WHERE id = ?", (id,))
+    return cursor.fetchone()
+
+
+def deleta_dado(conn: sqlite3.Connection, nome_tabela: str, id: int) -> int:
+    """
+    Deleta um registro de uma tabela pelo id.
+
+    Argumentos:
+        conn: conexão ativa com o banco de dados.
+        nome_tabela: nome da tabela de destino.
+        id: id do registro a ser deletado.
+
+    Retorna:
+        Número de registros deletados (0 se não encontrado, 1 se deletado).
+    """
+    cursor = conn.cursor()
+    cursor.execute(f"DELETE FROM {nome_tabela} WHERE id = ?", (id,))
+    conn.commit()
+    return cursor.rowcount
 
 
 def inicializa_db() -> None:
@@ -85,7 +124,8 @@ def inicializa_db() -> None:
         'entrada            NUMERIC  NOT NULL',
         'taxa_juros         NUMERIC  NOT NULL',
         'prazo_meses        INTEGER  NOT NULL',
-        'data_inicio        TEXT     NOT NULL'
+        'data_inicio        TEXT     NOT NULL',
+        'modelo             TEXT     NOT NULL CHECK(modelo IN ("SAC", "PRICE"))'
     ])
 
     cria_tabela(conn, 'Parcelas', [
@@ -100,7 +140,8 @@ def inicializa_db() -> None:
         'id               INTEGER  PRIMARY KEY AUTOINCREMENT',
         'financiamento_id INTEGER  NOT NULL REFERENCES Financiamentos(id) ON DELETE CASCADE',
         'valor_amortizado NUMERIC  NOT NULL',
-        'data_amortizacao TEXT     NOT NULL'
+        'data_amortizacao TEXT     NOT NULL',
+        'tipo             TEXT     NOT NULL CHECK(tipo IN ("PARCELA", "PRAZO"))'
     ])
 
     conn.close()

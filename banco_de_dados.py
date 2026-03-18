@@ -54,38 +54,43 @@ def insere_dado(conn: sqlite3.Connection, nome_tabela: str, dados: dict) -> int:
     return cursor.lastrowid
 
 
-def obtem_dados(conn: sqlite3.Connection, nome_tabela: str, colunas: list[str]) -> list:
+def obtem_dados(
+    conn: sqlite3.Connection,
+    nome_tabela: str,
+    coluna: str | None = None,
+    valor=None,
+    ordem: str | None = None,
+) -> list:
     """
-    Obtém registros de uma tabela do banco de dados.
+    Obtém registros de uma tabela com filtragem e ordenação opcionais.
+
+    Sempre retorna uma lista. Para verificar se um registro único existe,
+    cheque se a lista está vazia ou acesse o índice [0].
 
     Argumentos:
         conn: conexão ativa com o banco de dados.
         nome_tabela: nome da tabela de origem.
-        colunas: lista de colunas a serem retornadas.
+        coluna: coluna usada no filtro WHERE (opcional).
+        valor: valor comparado na coluna do filtro (obrigatório se coluna for informada).
+        ordem: coluna usada para ordenar os resultados (opcional).
 
     Retorna:
-        Lista de registros obtidos.
+        Lista de registros que satisfazem o filtro (pode ser vazia).
     """
+    query = f"SELECT * FROM {nome_tabela}"
+    params: tuple = ()
+
+    if coluna is not None:
+        query += f" WHERE {coluna} = ?"
+        params = (valor,)
+
+    if ordem:
+        query += f" ORDER BY {ordem}"
+
     cursor = conn.cursor()
-    cursor.execute(f"SELECT {', '.join(colunas)} FROM {nome_tabela}")
+    cursor.execute(query, params)
+
     return cursor.fetchall()
-
-
-def obtem_dado(conn: sqlite3.Connection, nome_tabela: str, id: int) -> sqlite3.Row | None:
-    """
-    Obtém um único registro de uma tabela pelo id.
-
-    Argumentos:
-        conn: conexão ativa com o banco de dados.
-        nome_tabela: nome da tabela de origem.
-        id: id do registro a ser obtido.
-
-    Retorna:
-        Registro encontrado ou None se não existir.
-    """
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM {nome_tabela} WHERE id = ?", (id,))
-    return cursor.fetchone()
 
 
 def deleta_dado(conn: sqlite3.Connection, nome_tabela: str, id: int) -> int:

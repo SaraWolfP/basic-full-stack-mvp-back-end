@@ -1,8 +1,9 @@
-import sqlite3
 from datetime import datetime
+from sqlite3 import IntegrityError
+
+import banco_de_dados as bd
 
 from flask import Blueprint, jsonify, request
-import banco_de_dados as bd
 from servicos.calculadora import Financiamento, criar_calculadora
 
 bp = Blueprint('financiamento', __name__, url_prefix='/financiamento')
@@ -83,7 +84,7 @@ def criar_financiamento():
         )
         financiamento_id = bd.insere_dado(conn, 'Financiamentos', financiamento.to_dict())
 
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         conn.close()
         return jsonify({"erro": f"Já existe um financiamento com o nome '{dados['nome']}'."}), 409
 
@@ -116,7 +117,7 @@ def listar_financiamentos():
         description: Nenhum financiamento cadastrado.
     """
     conn = bd.conecta_db()
-    financiamentos = bd.obtem_dados(conn, 'Financiamentos', ['*'])
+    financiamentos = bd.obtem_dados(conn, 'Financiamentos')
     conn.close()
 
     if not financiamentos:
@@ -157,10 +158,10 @@ def obter_financiamento(id_financiamento: int):
         description: Financiamento não encontrado.
     """
     conn = bd.conecta_db()
-    financiamento = bd.obtem_dado(conn, 'Financiamentos', id_financiamento)
+    resultado = bd.obtem_dados(conn, 'Financiamentos', coluna='id', valor=id_financiamento)
     conn.close()
 
-    if financiamento is None:
+    if not resultado:
         return jsonify({"erro": "Financiamento não encontrado."}), 404
 
-    return jsonify(dict(financiamento)), 200
+    return jsonify(dict(resultado[0])), 200

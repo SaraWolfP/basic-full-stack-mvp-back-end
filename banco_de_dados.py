@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3
 
 
@@ -93,20 +95,31 @@ def obtem_dados(
     return cursor.fetchall()
 
 
-def deleta_dado(conn: sqlite3.Connection, nome_tabela: str, id: int) -> int:
+def deleta_dados(conn: sqlite3.Connection, nome_tabela: str, coluna: str = 'id', valor=None) -> int:
     """
-    Deleta um registro de uma tabela pelo id.
+    Deleta registros de uma tabela filtrados por coluna.
+
+    Por padrão filtra pelo id primário. Para deletar por outra coluna,
+    informe coluna e valor explicitamente.
 
     Argumentos:
         conn: conexão ativa com o banco de dados.
         nome_tabela: nome da tabela de destino.
-        id: id do registro a ser deletado.
+        coluna: coluna usada no filtro WHERE (padrão: 'id').
+        valor: valor comparado na coluna do filtro.
 
     Retorna:
-        Número de registros deletados (0 se não encontrado, 1 se deletado).
+        Número de registros deletados.
+
+    Exemplos:
+        deleta_dados(conn, 'Financiamentos', valor=1)
+            → deleta o financiamento com id=1
+
+        deleta_dados(conn, 'Parcelas', coluna='financiamento_id', valor=1)
+            → deleta todas as parcelas do financiamento 1
     """
     cursor = conn.cursor()
-    cursor.execute(f"DELETE FROM {nome_tabela} WHERE id = ?", (id,))
+    cursor.execute(f"DELETE FROM {nome_tabela} WHERE {coluna} = ?", (valor,))
     conn.commit()
     return cursor.rowcount
 

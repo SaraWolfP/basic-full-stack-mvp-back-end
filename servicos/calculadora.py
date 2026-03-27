@@ -47,7 +47,6 @@ class AmortizacaoExtra:
     data_amortizacao: str
     tipo: str
 
-
     def to_dict(self) -> dict:
         return {
             "valor_amortizado": self.valor_amortizado,
@@ -58,16 +57,13 @@ class AmortizacaoExtra:
 
 class Calculadora(ABC):
     @abstractmethod
-    def calcular_parcelas(self, saldo_devedor: float, data_inicio: str, prazo_meses: int, taxa_juros: float) -> list[Parcela]:
-        pass
-
-    @abstractmethod
-    def recalcular_parcelas(self, financiamento: 'Financiamento', amortizacao_extra: 'AmortizacaoExtra') -> list[Parcela]:
+    def calcular_parcelas(self, valor_financiado: float, data_inicio: str, prazo_meses: int, taxa_juros: float) -> list[Parcela]:
         pass
 
     @abstractmethod
     def reconstruir_parcelas(self, financiamento: 'Financiamento', amortizacoes: list['AmortizacaoExtra']) -> list[Parcela]:
         pass
+
 
 class CalculadoraSac(Calculadora):
 
@@ -88,7 +84,6 @@ class CalculadoraSac(Calculadora):
         amortizacao_mensal = valor_financiado / prazo_meses
         saldo_devedor = valor_financiado
 
-        # date.fromisoformat requer dia — separamos manualmente pois data_inicio é 'YYYY-MM'
         ano, mes = map(int, data_inicio.split("-"))
         data_atual = date(ano, mes, 1)
 
@@ -102,6 +97,62 @@ class CalculadoraSac(Calculadora):
             ))
             saldo_devedor -= amortizacao_mensal
             data_atual += relativedelta(months=1)
+
+        return parcelas
+
+    def reconstruir_parcelas(self, financiamento: 'Financiamento', amortizacoes: list['AmortizacaoExtra']) -> list[Parcela]:
+        """
+        Reconstrói o cronograma completo de parcelas aplicando todas as amortizações em ordem cronológica.
+
+        Para o tipo 'PARCELA': subtrai o valor amortizado do saldo devedor e redistribui
+        o saldo restante pelo número de parcelas que ainda faltam, reduzindo o valor de cada uma.
+
+        Argumentos:
+            financiamento: objeto com os dados originais do financiamento.
+            amortizacoes: lista de AmortizacaoExtra a serem aplicadas (pode ser vazia).
+
+        Retorna:
+            Lista de Parcela com o cronograma final já com todas as amortizações aplicadas.
+        """
+        taxa = financiamento.taxa_juros
+        amortizacao_mensal = financiamento.valor_financiado / financiamento.prazo_meses
+        saldo_devedor = financiamento.valor_financiado
+
+        ano, mes = map(int, financiamento.data_inicio.split("-"))
+        data_atual = date(ano, mes, 1)
+
+        amortizacoes_ordenadas = sorted(amortizacoes, key=lambda a: a.data_amortizacao)
+
+        parcelas: list[Parcela] = []
+        numero_parcela = 1
+        idx_amortizacao = 0
+
+        while numero_parcela <= financiamento.prazo_meses and saldo_devedor > 0.005:
+            data_str = data_atual.strftime("%Y-%m")
+
+            # aplica todas as amortizações que caem neste mês antes de calcular a parcela
+            while idx_amortizacao < len(amortizacoes_ordenadas) and amortizacoes_ordenadas[idx_amortizacao].data_amortizacao == data_str:
+                saldo_devedor -= amortizacoes_ordenadas[idx_amortizacao].valor_amortizado
+                parcelas_restantes = financiamento.prazo_meses - numero_parcela + 1
+                if saldo_devedor > 0.005 and parcelas_restantes > 0:
+                    amortizacao_mensal = saldo_devedor / parcelas_restantes
+                idx_amortizacao += 1
+
+            if saldo_devedor <= 0.005:
+                break
+
+            juros = saldo_devedor * taxa
+            valor_parcela = amortizacao_mensal + juros
+
+            parcelas.append(Parcela(
+                numero_parcela=numero_parcela,
+                data_parcela=data_str,
+                valor_parcela=round(valor_parcela, 2),
+            ))
+
+            saldo_devedor -= amortizacao_mensal
+            data_atual += relativedelta(months=1)
+            numero_parcela += 1
 
         return parcelas
 

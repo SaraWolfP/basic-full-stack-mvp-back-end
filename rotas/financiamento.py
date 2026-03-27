@@ -11,15 +11,29 @@ bp = Blueprint('financiamento', __name__, url_prefix='/financiamento')
 @bp.route('/', methods=['POST'])
 def criar_financiamento():
     """
-    Cria um novo financiamento e calcula suas parcelas.
-
-    Responses:
-      201:
-        description: Financiamento criado com sucesso.
-      400:
-        description: Dados inválidos ou ausentes.
-      409:
-        description: Nome já cadastrado.
+    Cria um novo financiamento e calcula suas parcelas pelo sistema SAC.
+    ---
+    tags:
+      - Financiamentos
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [nome, valor_imovel, entrada, taxa_juros, prazo_meses, data_inicio, modelo]
+          properties:
+            nome:          { type: string,  example: "Meu Apartamento" }
+            valor_imovel:  { type: number,  example: 500000 }
+            entrada:       { type: number,  example: 100000 }
+            taxa_juros:    { type: number,  example: 0.89, description: "Percentual mensal (0.89 = 0,89% a.m.)" }
+            prazo_meses:   { type: integer, example: 360 }
+            data_inicio:   { type: string,  example: "2025-01" }
+            modelo:        { type: string,  enum: [SAC, PRICE], example: SAC }
+    responses:
+      201: { description: Financiamento criado com sucesso. }
+      400: { description: Dados inválidos ou ausentes. }
+      409: { description: Já existe um financiamento com esse nome. }
     """
     dados = request.get_json(silent=True)
 
@@ -109,12 +123,11 @@ def criar_financiamento():
 def listar_financiamentos():
     """
     Lista todos os financiamentos cadastrados.
-
-    Responses:
-      200:
-        description: Financiamentos listados com sucesso.
-      404:
-        description: Nenhum financiamento cadastrado.
+    ---
+    tags:
+      - Financiamentos
+    responses:
+      200: { description: Lista de financiamentos (vazia se nenhum cadastrado). }
     """
     conn = bd.conecta_db()
     financiamentos = bd.obtem_dados(conn, 'Financiamentos')
@@ -129,16 +142,18 @@ def listar_financiamentos():
 @bp.route('/<int:id_financiamento>', methods=['DELETE'])
 def deletar_financiamento(id_financiamento: int):
     """
-    Deleta um financiamento cadastrado.
-
-    Responses:
-      200:
-        description: Financiamento deletado com sucesso.
-      404:
-        description: Financiamento não encontrado.
+    Deleta um financiamento e todas as suas parcelas e amortizações.
+    ---
+    tags:
+      - Financiamentos
+    parameters:
+      - { in: path, name: id_financiamento, type: integer, required: true }
+    responses:
+      200: { description: Financiamento deletado com sucesso. }
+      404: { description: Financiamento não encontrado. }
     """
     conn = bd.conecta_db()
-    linhas_afetadas = bd.deleta_dado(conn, 'Financiamentos', id_financiamento)
+    linhas_afetadas = bd.deleta_dados(conn, 'Financiamentos', valor=id_financiamento)
     conn.close()
 
     if linhas_afetadas == 0:
@@ -149,13 +164,15 @@ def deletar_financiamento(id_financiamento: int):
 @bp.route('/<int:id_financiamento>', methods=['GET'])
 def obter_financiamento(id_financiamento: int):
     """
-    Obtém um financiamento cadastrado.
-
-    Responses:
-      200:
-        description: Financiamento obtido com sucesso.
-      404:
-        description: Financiamento não encontrado.
+    Retorna um financiamento pelo ID.
+    ---
+    tags:
+      - Financiamentos
+    parameters:
+      - { in: path, name: id_financiamento, type: integer, required: true }
+    responses:
+      200: { description: Financiamento encontrado. }
+      404: { description: Financiamento não encontrado. }
     """
     conn = bd.conecta_db()
     resultado = bd.obtem_dados(conn, 'Financiamentos', coluna='id', valor=id_financiamento)

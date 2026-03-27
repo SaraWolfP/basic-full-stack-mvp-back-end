@@ -7,13 +7,15 @@ bp = Blueprint('parcelas', __name__, url_prefix='/financiamento')
 @bp.route('/<int:id_financiamento>/parcelas', methods=['GET'])
 def listar_parcelas_por_financiamento(id_financiamento: int):
     """
-    Lista todas as parcelas de um financiamento específico.
-
-    Responses:
-      200:
-        description: Parcelas listadas com sucesso.
-      404:
-        description: Financiamento não encontrado.
+    Lista todas as parcelas de um financiamento em ordem cronológica.
+    ---
+    tags:
+      - Parcelas
+    parameters:
+      - { in: path, name: id_financiamento, type: integer, required: true }
+    responses:
+      200: { description: Lista de parcelas (vazia se nenhuma calculada). }
+      404: { description: Financiamento não encontrado. }
     """
     conn = bd.conecta_db()
 

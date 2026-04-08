@@ -63,8 +63,21 @@ Deleção em cascata: ao deletar um financiamento, todas as parcelas e amortiza�
 
 ### 1. Clone o repositório
 
+Abra um terminal e navegue até a pasta onde deseja salvar o projeto (por exemplo, `Documentos`):
+
+```bash
+cd Documentos
+```
+
+Em seguida, execute:
+
 ```bash
 git clone <url-do-repositorio>
+```
+
+Acesse a pasta do projeto:
+
+```bash
 cd basic-full-stack-mvp-back-end
 ```
 

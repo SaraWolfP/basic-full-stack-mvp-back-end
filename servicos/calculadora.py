@@ -130,17 +130,6 @@ class CalculadoraSac(Calculadora):
         while numero_parcela <= financiamento.prazo_meses and saldo_devedor > 0.005:
             data_str = data_atual.strftime("%Y-%m")
 
-            # aplica todas as amortizações que caem neste mês antes de calcular a parcela
-            while idx_amortizacao < len(amortizacoes_ordenadas) and amortizacoes_ordenadas[idx_amortizacao].data_amortizacao == data_str:
-                saldo_devedor -= amortizacoes_ordenadas[idx_amortizacao].valor_amortizado
-                parcelas_restantes = financiamento.prazo_meses - numero_parcela + 1
-                if saldo_devedor > 0.005 and parcelas_restantes > 0:
-                    amortizacao_mensal = saldo_devedor / parcelas_restantes
-                idx_amortizacao += 1
-
-            if saldo_devedor <= 0.005:
-                break
-
             juros = saldo_devedor * taxa
             valor_parcela = amortizacao_mensal + juros
 
@@ -153,6 +142,14 @@ class CalculadoraSac(Calculadora):
             saldo_devedor -= amortizacao_mensal
             data_atual += relativedelta(months=1)
             numero_parcela += 1
+
+            # aplica amortizações do mês recém-calculado — efeito começa no mês seguinte
+            while idx_amortizacao < len(amortizacoes_ordenadas) and amortizacoes_ordenadas[idx_amortizacao].data_amortizacao == data_str:
+                saldo_devedor -= amortizacoes_ordenadas[idx_amortizacao].valor_amortizado
+                parcelas_restantes = financiamento.prazo_meses - numero_parcela + 1
+                if saldo_devedor > 0.005 and parcelas_restantes > 0:
+                    amortizacao_mensal = saldo_devedor / parcelas_restantes
+                idx_amortizacao += 1
 
         return parcelas
 
